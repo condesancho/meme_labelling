@@ -1,0 +1,5 @@
+# Exclude following directories
+/__pycache__
+/ml4a-ofx
+/data
+/tsne
