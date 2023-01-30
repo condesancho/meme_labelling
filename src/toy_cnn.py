@@ -1,18 +1,18 @@
-from keras.models import Model
-from keras.applications.vgg16 import VGG16
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
 
-import os
+from tensorflow.keras import layers, models
+from tensorflow import keras
+from keras.models import Model
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 from image_vgg_functions import load_images
 
+import os
+import numpy as np
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
-PATH = "./data/categories/"
+PATH = "../data/categories/"
 BATCH_SIZE = 64
 
 
@@ -24,21 +24,38 @@ def mlp(x, hidden_units, dropout_rate):
     return x
 
 
-train, valid = load_images(PATH, BATCH_SIZE, generate_data=True, valid=True)
+def cnn(filters_convs=[(64, 2), (128, 1), (128, 1)], pool_size=2):
+    conv_model = models.Sequential()
+    conv_model.add(
+        layers.Conv2D(
+            32, (3, 3), activation="relu", input_shape=(224, 224, 3), padding="same"
+        )
+    )
+    conv_model.add(layers.MaxPooling2D((pool_size, pool_size)))
+    for n_filters, n_convs in filters_convs:
+        for _ in np.arange(n_convs):
+            conv_model.add(
+                layers.Conv2D(n_filters, (3, 3), activation="relu", padding="same")
+            )
+        conv_model.add(layers.MaxPooling2D((pool_size, pool_size)))
 
-vgg = VGG16(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
+    return conv_model
 
-# Leave last layers for fine tuning
-fine_tune = 4  # no. layers to fine tune
-for layer in vgg.layers[:-fine_tune]:
-    layer.trainable = False
+
+# Load the images with preprocessing for the cnn
+train, valid = load_images(PATH, BATCH_SIZE, generate_data=True, valid=True, vgg=False)
+
+
+conv_model = cnn()
 
 # Construct the top model and the output
-top_model = mlp(vgg.output, [4096, 1024], 0.2)
+top_model = mlp(conv_model.output, [4096, 1024], 0.2)
 output_layer = layers.Dense(4, activation="softmax")(top_model)
 
 # Final model
-model = Model(inputs=vgg.input, outputs=output_layer)
+model = Model(inputs=conv_model.input, outputs=output_layer)
+
+print(model.summary())
 
 # Model parameters
 n_epochs = 1
@@ -57,7 +74,7 @@ if valid is not None:
         monitor="val_loss", patience=5, restore_best_weights=True, mode="min"
     )
 
-    vgg_history = model.fit(
+    cnn_history = model.fit(
         train,
         batch_size=BATCH_SIZE,
         epochs=n_epochs,
@@ -68,7 +85,7 @@ if valid is not None:
         verbose=1,
     )
 else:
-    vgg_history = model.fit(
+    cnn_history = model.fit(
         train,
         batch_size=BATCH_SIZE,
         epochs=n_epochs,
@@ -76,4 +93,4 @@ else:
         verbose=1,
     )
 
-vgg.save("./vgg/vgg_fine_tuned.h5")
+conv_model.save("./cnn/cnn_fine_tuned.h5")

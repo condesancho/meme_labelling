@@ -3,3 +3,6 @@
 /ml4a-ofx
 /data
 /tsne
+/src/__pycache__
+/src/cnn
+/src/vgg

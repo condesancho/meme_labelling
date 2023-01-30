@@ -8,18 +8,27 @@ from keras.applications.vgg16 import preprocess_input
 
 # Function that imports the images with/without augmenting the data
 # Returns the training and validation (if valid=True) sets
-def load_images(path, batch_size, generate_data=False, valid=True):
+def load_images(path, batch_size, generate_data=False, valid=True, vgg=True):
     # The names of the classes according to the names of the directories
     classes = sorted(os.listdir(path))[1:]
 
-    # ImageDataGenerator imports only the images from the above classes
     if valid:
-        train_datagen = ImageDataGenerator(
-            horizontal_flip=generate_data,
-            vertical_flip=generate_data,
-            validation_split=0.2,
-            preprocessing_function=preprocess_input,
-        )  # VGG16 preprocessing
+        # Check if preprocessing is for the VGG or the CNN
+        if vgg:
+            # This imports only the images from the above classes
+            train_datagen = ImageDataGenerator(
+                horizontal_flip=generate_data,
+                vertical_flip=generate_data,
+                validation_split=0.2,
+                preprocessing_function=preprocess_input,
+            )  # VGG16 preprocessing
+        else:
+            train_datagen = ImageDataGenerator(
+                horizontal_flip=generate_data,
+                vertical_flip=generate_data,
+                validation_split=0.2,
+                rescale=1.0 / 255,
+            )  # regular preprocessing
 
         train_set = train_datagen.flow_from_directory(
             path,
@@ -41,11 +50,18 @@ def load_images(path, batch_size, generate_data=False, valid=True):
             shuffle=True,
         )
     else:
-        train_datagen = ImageDataGenerator(
-            horizontal_flip=generate_data,
-            vertical_flip=generate_data,
-            preprocessing_function=preprocess_input,
-        )  # VGG16 preprocessing
+        if vgg:
+            train_datagen = ImageDataGenerator(
+                horizontal_flip=generate_data,
+                vertical_flip=generate_data,
+                preprocessing_function=preprocess_input,
+            )  # VGG16 preprocessing
+        else:
+            train_datagen = ImageDataGenerator(
+                horizontal_flip=generate_data,
+                vertical_flip=generate_data,
+                rescale=1.0 / 255,
+            )  # regular preprocessing
 
         train_set = train_datagen.flow_from_directory(
             path,

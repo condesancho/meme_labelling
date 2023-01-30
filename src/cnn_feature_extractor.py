@@ -15,16 +15,16 @@ BATCH_SIZE = 64
 
 # Import the labelled data
 labelled_data, _ = load_images(
-    LABELLED_PATH, BATCH_SIZE, generate_data=False, valid=False
+    LABELLED_PATH, BATCH_SIZE, generate_data=False, valid=False, vgg=False
 )
 
 # Import the fine tuned model
-ft_model = load_model("./vgg/vgg_fine_tuned.h5")
+ft_model = load_model("./cnn/cnn_fine_tuned.h5")
 
 ### Feature extraction for the labelled images ###
 sample_count = labelled_data.samples
 
-labelled_features = np.zeros(shape=(sample_count, 7, 7, 512))
+labelled_features = np.zeros(shape=(sample_count, 14, 14, 128))
 labels = np.zeros(shape=(sample_count, 4))
 
 i = 0
@@ -40,7 +40,7 @@ for inputs_batch, labels_batch in labelled_data:
 df_labelled = pd.DataFrame(data=np.reshape(labelled_features, (sample_count, -1)))
 labels = np.nonzero(labels)[1] + 1
 df_labelled["label"] = labels
-df_labelled.to_csv("./vgg/labelled_features.csv", index=False)
+df_labelled.to_csv("./cnn/labelled_features.csv", index=False)
 
 
 ### Feature extraction for the unlabelled images ###
@@ -68,4 +68,4 @@ unlabelled_features = np.array(activations)
 
 df_unlabelled = pd.DataFrame(data=unlabelled_features)
 df_unlabelled["image"] = unlabelled_imgs
-df_unlabelled.to_csv("./vgg/unlabelled_features.csv", index=False)
+df_unlabelled.to_csv("./cnn/unlabelled_features.csv", index=False)
