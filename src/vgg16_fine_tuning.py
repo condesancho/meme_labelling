@@ -1,6 +1,6 @@
 from keras.models import Model
 from keras.applications.vgg16 import VGG16
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping
 
 import tensorflow as tf
 from tensorflow import keras
@@ -41,7 +41,7 @@ output_layer = layers.Dense(4, activation="softmax")(top_model)
 model = Model(inputs=vgg.input, outputs=output_layer)
 
 # Model parameters
-n_epochs = 1
+n_epochs = 20
 lr = 0.0001  # Learning rate
 optim = keras.optimizers.Adam(learning_rate=lr)
 n_steps = train.samples // BATCH_SIZE

@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 from tensorflow import keras
 from keras.models import Model
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping
 
 from image_vgg_functions import load_images
 
@@ -58,7 +58,7 @@ model = Model(inputs=conv_model.input, outputs=output_layer)
 print(model.summary())
 
 # Model parameters
-n_epochs = 1
+n_epochs = 20
 lr = 0.0001  # Learning rate
 optim = keras.optimizers.Adam(learning_rate=lr)
 n_steps = train.samples // BATCH_SIZE

@@ -54,10 +54,11 @@ for idx, image_path in enumerate(candidate_images):
     file_path = join(UNLABELLED_PATH, image_path)
     img = get_image(file_path, input_shape)
     if img is not None:
-        print(
-            "getting activations for %s %d/%d"
-            % (image_path, idx, len(candidate_images))
-        )
+        if idx % 100 == 0:
+            print(
+                "getting activations for %s %d/%d"
+                % (image_path, idx, len(candidate_images))
+            )
         acts = ft_model.predict(img)[0]
 
         activations.append(np.reshape(acts, -1))

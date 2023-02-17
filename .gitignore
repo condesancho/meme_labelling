@@ -1,8 +1,11 @@
 # Exclude following directories
 /__pycache__
 /ml4a-ofx
+/TextFuseNet
 /data
 /tsne
+
 /src/__pycache__
 /src/cnn
 /src/vgg
+/src/samples

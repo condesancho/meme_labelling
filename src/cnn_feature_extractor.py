@@ -19,12 +19,13 @@ labelled_data, _ = load_images(
 )
 
 # Import the fine tuned model
-ft_model = load_model("./cnn/cnn_fine_tuned.h5")
+ft_model = load_model("./cnn/model_1/cnn_fine_tuned.h5")
+# The output shape of the cnn model
+output_shape = ft_model.output_shape[1:]
 
 ### Feature extraction for the labelled images ###
 sample_count = labelled_data.samples
-
-labelled_features = np.zeros(shape=(sample_count, 14, 14, 128))
+labelled_features = np.zeros(shape=(sample_count,) + output_shape)
 labels = np.zeros(shape=(sample_count, 4))
 
 i = 0
@@ -54,10 +55,11 @@ for idx, image_path in enumerate(candidate_images):
     file_path = join(UNLABELLED_PATH, image_path)
     img = get_image(file_path, input_shape)
     if img is not None:
-        print(
-            "getting activations for %s %d/%d"
-            % (image_path, idx, len(candidate_images))
-        )
+        if idx % 100 == 0:
+            print(
+                "getting activations for %s %d/%d"
+                % (image_path, idx, len(candidate_images))
+            )
         acts = ft_model.predict(img)[0]
 
         activations.append(np.reshape(acts, -1))
