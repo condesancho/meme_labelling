@@ -5,9 +5,9 @@ import sys
 
 selection = int(input("Select 1 for cnn or 2 for vgg: "))
 if selection == 1:
-    feature_dir = "./cnn/"
+    feature_dir = "../models/cnn_feat_ex/"
 elif selection == 2:
-    feature_dir = "./vgg/"
+    feature_dir = "../models/vgg_feat_ex/"
 else:
     sys.exit("Invalid input. Try again")
 

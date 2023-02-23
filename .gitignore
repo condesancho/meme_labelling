@@ -1,11 +1,13 @@
 # Exclude following directories
-/__pycache__
+*__pycache__/
 /ml4a-ofx
 /TextFuseNet
 /data
 /tsne
+/models
 
-/src/__pycache__
-/src/cnn
-/src/vgg
 /src/samples
+
+/text_detection/east*
+/text_detection/no_text
+/text_detection/text_presence.csv

@@ -1,6 +1,7 @@
 import os
 import numpy as np
 
+import tensorflow as tf
 from tensorflow import keras
 from keras.preprocessing.image import ImageDataGenerator
 from keras.applications.vgg16 import preprocess_input
@@ -8,6 +9,7 @@ from keras.applications.vgg16 import preprocess_input
 
 # Function that imports the images with/without augmenting the data
 # Returns the training and validation (if valid=True) sets
+# Preprocesses the data according to preprocess_input function if VGG is used or not
 def load_images(path, batch_size, generate_data=False, valid=True, vgg=True):
     # The names of the classes according to the names of the directories
     classes = sorted(os.listdir(path))[1:]
@@ -77,6 +79,26 @@ def load_images(path, batch_size, generate_data=False, valid=True, vgg=True):
     return train_set, valid_set
 
 
+# Loads the preprocessed xtrain set and the labels ytrain
+def load_x_and_y_train(path, vgg=True):
+    batch_size = 1000
+    train_set, _ = load_images(path, batch_size, valid=False, vgg=vgg)
+    sample_count = train_set.samples
+
+    x_train = np.zeros(shape=(sample_count, 224, 224, 3))
+    y_train = np.zeros(shape=(sample_count, 4))
+
+    i = 0
+    for x, y in train_set:
+        x_train[i * batch_size : (i + 1) * batch_size] = x
+        y_train[i * batch_size : (i + 1) * batch_size] = y
+        i += 1
+        if i * batch_size >= sample_count:
+            break
+
+    return x_train, y_train
+
+
 # Find the candidate unlabelled images
 def find_candidate_images(images_path):
     """
@@ -94,9 +116,13 @@ def find_candidate_images(images_path):
     return images
 
 
-def get_image(path, input_shape):
+# Returns the preprocessed numpy array of an image
+def get_image(path, input_shape, vgg=True):
     img = keras.utils.load_img(path, target_size=input_shape)
     x = keras.utils.img_to_array(img)
     x = np.expand_dims(x, axis=0)
-    x = preprocess_input(x)
+    if vgg:
+        x = preprocess_input(x)
+    else:
+        x *= 1.0 / 255
     return x

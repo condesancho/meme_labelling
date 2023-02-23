@@ -11,6 +11,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 UNLABELLED_PATH = "../data/images/"
 LABELLED_PATH = "../data/categories/"
+MODEL_PATH = "../models/vgg_feat_ex/"
 BATCH_SIZE = 64
 
 # Import the labelled data
@@ -19,7 +20,7 @@ labelled_data, _ = load_images(
 )
 
 # Import the fine tuned model
-ft_model = load_model("./vgg/vgg_fine_tuned.h5")
+ft_model = load_model(MODEL_PATH + "vgg_fine_tuned.h5")
 
 ### Feature extraction for the labelled images ###
 sample_count = labelled_data.samples
@@ -40,7 +41,7 @@ for inputs_batch, labels_batch in labelled_data:
 df_labelled = pd.DataFrame(data=np.reshape(labelled_features, (sample_count, -1)))
 labels = np.nonzero(labels)[1] + 1
 df_labelled["label"] = labels
-df_labelled.to_csv("./vgg/labelled_features.csv", index=False)
+df_labelled.to_csv(MODEL_PATH + "labelled_features.csv", index=False)
 
 
 ### Feature extraction for the unlabelled images ###
@@ -52,7 +53,7 @@ activations = []
 unlabelled_imgs = []
 for idx, image_path in enumerate(candidate_images):
     file_path = join(UNLABELLED_PATH, image_path)
-    img = get_image(file_path, input_shape)
+    img = get_image(file_path, input_shape, vgg=True)
     if img is not None:
         if idx % 100 == 0:
             print(
@@ -69,4 +70,4 @@ unlabelled_features = np.array(activations)
 
 df_unlabelled = pd.DataFrame(data=unlabelled_features)
 df_unlabelled["image"] = unlabelled_imgs
-df_unlabelled.to_csv("./vgg/unlabelled_features.csv", index=False)
+df_unlabelled.to_csv(MODEL_PATH + "unlabelled_features.csv", index=False)

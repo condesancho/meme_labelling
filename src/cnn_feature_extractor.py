@@ -11,6 +11,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 UNLABELLED_PATH = "../data/images/"
 LABELLED_PATH = "../data/categories/"
+MODEL_PATH = "../models/cnn_feat_ex/"
 BATCH_SIZE = 64
 
 # Import the labelled data
@@ -19,7 +20,7 @@ labelled_data, _ = load_images(
 )
 
 # Import the fine tuned model
-ft_model = load_model("./cnn/model_1/cnn_fine_tuned.h5")
+ft_model = load_model(MODEL_PATH + "cnn_fine_tuned.h5")
 # The output shape of the cnn model
 output_shape = ft_model.output_shape[1:]
 
@@ -41,7 +42,7 @@ for inputs_batch, labels_batch in labelled_data:
 df_labelled = pd.DataFrame(data=np.reshape(labelled_features, (sample_count, -1)))
 labels = np.nonzero(labels)[1] + 1
 df_labelled["label"] = labels
-df_labelled.to_csv("./cnn/labelled_features.csv", index=False)
+df_labelled.to_csv(MODEL_PATH + "labelled_features.csv", index=False)
 
 
 ### Feature extraction for the unlabelled images ###
@@ -53,7 +54,7 @@ activations = []
 unlabelled_imgs = []
 for idx, image_path in enumerate(candidate_images):
     file_path = join(UNLABELLED_PATH, image_path)
-    img = get_image(file_path, input_shape)
+    img = get_image(file_path, input_shape, vgg=False)
     if img is not None:
         if idx % 100 == 0:
             print(
@@ -70,4 +71,4 @@ unlabelled_features = np.array(activations)
 
 df_unlabelled = pd.DataFrame(data=unlabelled_features)
 df_unlabelled["image"] = unlabelled_imgs
-df_unlabelled.to_csv("./cnn/unlabelled_features.csv", index=False)
+df_unlabelled.to_csv(MODEL_PATH + "unlabelled_features.csv", index=False)
