@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import sys
 
-from image_vgg_functions import load_images, find_candidate_images, get_image
+from image_vgg_functions import find_candidate_images, get_image
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -32,9 +32,9 @@ unlabelled_imgs = []
 for idx, image_path in enumerate(candidate_images):
     file_path = join(UNLABELLED_PATH, image_path)
     if selection == 1:
-        img = get_image(file_path, input_shape, vgg=False)
+        img = get_image(file_path, input_shape, architecture='toy_cnn')
     elif selection == 2:
-        img = get_image(file_path, input_shape, vgg=True)
+        img = get_image(file_path, input_shape, architecture='vgg')
     if img is not None:
         if idx % 100 == 0:
             print(

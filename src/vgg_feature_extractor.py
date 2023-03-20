@@ -16,7 +16,11 @@ BATCH_SIZE = 64
 
 # Import the labelled data
 labelled_data, _ = load_images(
-    LABELLED_PATH, BATCH_SIZE, generate_data=False, valid=False
+    LABELLED_PATH,
+    BATCH_SIZE,
+    generate_data=False,
+    valid=False,
+    architecture="vgg",
 )
 
 # Import the fine tuned model
@@ -53,7 +57,7 @@ activations = []
 unlabelled_imgs = []
 for idx, image_path in enumerate(candidate_images):
     file_path = join(UNLABELLED_PATH, image_path)
-    img = get_image(file_path, input_shape, vgg=True)
+    img = get_image(file_path, input_shape, architecture="vgg")
     if img is not None:
         if idx % 100 == 0:
             print(

@@ -13,7 +13,7 @@ selection = int(
 if selection == 1:
     label_dir = "../models/cnn_feat_ex/"
 elif selection == 2:
-    label_dir = "../models/vgg_feat_ex/"
+    label_dir = "../models/vgg_feat_ex/model_1/"
 elif selection == 3:
     label_dir = "../models/cnn/"
 elif selection == 4:
@@ -22,7 +22,6 @@ else:
     sys.exit("Invalid input. Try again")
 
 df = pd.read_csv(label_dir + "predicted_labels.csv")
-print(df.shape)
 
 text_presence = pd.read_csv("../text_detection/text_presence.csv")
 no_text = text_presence[text_presence.text == False].copy()
@@ -40,10 +39,10 @@ df = df[df.loc[:, "image"].isin(no_text.loc[:, "image"]) == False]
 print(df["predicted_labels"].value_counts())
 
 # Equally sample images of each label from the dataframe and copy them
-df_samples = df.groupby("predicted_labels").sample(n=500, ignore_index=True)
-for i in range(len(df_samples.index)):
-    out_dir = label_dir + "samples/cluster" + str(df_samples.predicted_labels[i])
-    shutil.copy(df.image[i].replace("varailop", "bill/extra"), out_dir)
+df_samples = df.groupby("predicted_labels").sample(n=500)
+for idx, row in df_samples.iterrows():
+    out_dir = label_dir + "samples/cluster" + str(row["predicted_labels"])
+    shutil.copy(row["image"].replace("varailop", "bill/extra"), out_dir)
 
 # # Split the images to separate folders according to the csv file
 # for i in range(len(df.index)):

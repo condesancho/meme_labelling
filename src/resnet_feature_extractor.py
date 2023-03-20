@@ -11,18 +11,25 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 UNLABELLED_PATH = "../data/images/"
 LABELLED_PATH = "../data/categories/"
-MODEL_PATH = "../models/cnn_feat_ex/"
+MODEL_PATH = "../models/resnet_feat_ex/"
 BATCH_SIZE = 64
 
 # Import the labelled data
 labelled_data, _ = load_images(
-    LABELLED_PATH, BATCH_SIZE, generate_data=False, valid=False, architecture="toy_cnn"
+    LABELLED_PATH,
+    BATCH_SIZE,
+    generate_data=False,
+    valid=False,
+    architecture="resnet",
 )
 
 # Import the fine tuned model
-ft_model = load_model(MODEL_PATH + "cnn_fine_tuned.h5")
+ft_model = load_model(MODEL_PATH + "resnet_fine_tuned.h5")
 # The output shape of the cnn model
 output_shape = ft_model.output_shape[1:]
+
+### Feature extraction for the labelled images ###
+sample_count = labelled_data.samples
 
 ### Feature extraction for the labelled images ###
 sample_count = labelled_data.samples
@@ -54,7 +61,7 @@ activations = []
 unlabelled_imgs = []
 for idx, image_path in enumerate(candidate_images):
     file_path = join(UNLABELLED_PATH, image_path)
-    img = get_image(file_path, input_shape, architecture="toy_cnn")
+    img = get_image(file_path, input_shape, architecture="resnet")
     if img is not None:
         if idx % 100 == 0:
             print(

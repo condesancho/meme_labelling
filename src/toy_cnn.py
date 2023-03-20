@@ -80,7 +80,7 @@ def model_builder(hp):
     return model
 
 
-x_train, y_train = load_x_and_y_train(PATH, vgg=False)
+x_train, y_train = load_x_and_y_train(PATH, architecture='toy_cnn')
 
 # Initialize tuner
 tuner = kt.Hyperband(
@@ -137,7 +137,9 @@ model = Model(inputs=conv_model.input, outputs=output_layer)
 print(model.summary())
 
 # Load the images with preprocessing for the cnn
-train, valid = load_images(PATH, BATCH_SIZE, generate_data=True, valid=True, vgg=False)
+train, valid = load_images(
+    PATH, BATCH_SIZE, generate_data=True, valid=True, architecture='toy_cnn'
+)
 
 # Model parameters
 n_epochs = 20

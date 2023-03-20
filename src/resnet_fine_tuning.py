@@ -1,5 +1,5 @@
 from keras.models import Model
-from keras.applications.vgg16 import VGG16
+from keras.applications.resnet_v2 import ResNet152V2
 from keras.callbacks import EarlyStopping
 
 import tensorflow as tf
@@ -29,20 +29,26 @@ def mlp(x, hidden_units, dropout_rate):
 def model_builder(hp):
     hp_lr = hp.Choice("learning_rate", values=[1e-2, 1e-3, 1e-4])
     hp_drop = hp.Choice("dropout_rate", values=[0.5, 0.6, 0.75])
-    hp_trainable = hp.Choice("vgg_trainable_layers", values=[3, 4, 6])
+    hp_trainable = hp.Choice("resnet_trainable_layers", values=[10, 15, 20])
 
-    vgg = VGG16(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
+    resnet = ResNet152V2(
+        weights="imagenet", include_top=False, input_shape=(224, 224, 3), pooling="avg"
+    )
 
     # Leave last layers for fine tuning
-    for layer in vgg.layers[:-hp_trainable]:
+    for layer in resnet.layers[:-hp_trainable]:
         layer.trainable = False
+    # Of the last layers that we unfroze we leave BatchNorm layers frozen
+    for layer in resnet.layers[-hp_trainable:]:
+        if isinstance(layer, layers.BatchNormalization):
+            layer.trainable = False
 
     # Construct the top model and the output
-    top_model = mlp(vgg.output, [4096, 1024], hp_drop)
+    top_model = mlp(resnet.output, [4096, 1024], hp_drop)
     output_layer = layers.Dense(4, activation="softmax")(top_model)
 
     # Final model
-    model = Model(inputs=vgg.input, outputs=output_layer)
+    model = Model(inputs=resnet.input, outputs=output_layer)
 
     optim = keras.optimizers.Adam(learning_rate=hp_lr)
 
@@ -54,11 +60,11 @@ def model_builder(hp):
     return model
 
 
-x_train, y_train = load_x_and_y_train(PATH, architecture="vgg")
+x_train, y_train = load_x_and_y_train(PATH, architecture="resnet")
 
 # Initialize tuner
 tuner = kt.Hyperband(
-    model_builder, objective="val_accuracy", max_epochs=20, directory="vgg_tuning"
+    model_builder, objective="val_accuracy", max_epochs=20, directory="resnet_tuning"
 )
 
 early_stop = EarlyStopping(monitor="val_loss", patience=5)
@@ -80,27 +86,37 @@ print("Hyperparametre search time:", end - st, "seconds")
 best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 
 print("The chosen optimal parameters are:")
-print("No. optimal trainable vgg layers:", best_hps.get("vgg_trainable_layers"))
+print(
+    "No. optimal trainable ResNet152V2 layers:", best_hps.get("resnet_trainable_layers")
+)
 print("Dropout rate:", best_hps.get("dropout_rate"))
 print("Learning rate:", best_hps.get("learning_rate"))
 
+
 ### Train the optimal model ###
-vgg = VGG16(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
+resnet = ResNet152V2(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
 # Leave last layers for fine tuning
-fine_tune = best_hps.get("vgg_trainable_layers")  # no. layers to fine tune
-for layer in vgg.layers[:-fine_tune]:
+fine_tune = best_hps.get("resnet_trainable_layers")  # no. layers to fine tune
+for layer in resnet.layers[:-fine_tune]:
     layer.trainable = False
+for layer in resnet.layers[-fine_tune:]:
+    if isinstance(layer, layers.BatchNormalization):
+        layer.trainable = False
 
 # Construct the top model and the output
-top_model = mlp(vgg.output, [4096, 1024], best_hps.get("dropout_rate"))
+top_model = mlp(resnet.output, [4096, 1024], best_hps.get("dropout_rate"))
 output_layer = layers.Dense(4, activation="softmax")(top_model)
 
 # Final model
-model = Model(inputs=vgg.input, outputs=output_layer)
+model = Model(inputs=resnet.input, outputs=output_layer)
 
 # Load the images
 train, valid = load_images(
-    PATH, BATCH_SIZE, generate_data=True, valid=True, architecture="vgg"
+    PATH,
+    BATCH_SIZE,
+    generate_data=True,
+    valid=True,
+    architecture="resnet",
 )
 
 # Model parameters
@@ -112,7 +128,6 @@ n_steps = train.samples // BATCH_SIZE
 # Compile the model
 model.compile(loss="categorical_crossentropy", optimizer=optim, metrics=["accuracy"])
 
-
 n_val_steps = valid.samples // BATCH_SIZE
 
 # EarlyStopping
@@ -120,7 +135,7 @@ early_stop = EarlyStopping(
     monitor="val_loss", patience=5, restore_best_weights=True, mode="min"
 )
 
-vgg_history = model.fit(
+resnet_history = model.fit(
     train,
     batch_size=BATCH_SIZE,
     epochs=n_epochs,
@@ -131,6 +146,6 @@ vgg_history = model.fit(
     verbose=1,
 )
 
-vgg.save("../models/vgg_feat_ex/vgg_fine_tuned.h5")
+resnet.save("../models/resnet_feat_ex/resnet_fine_tuned.h5")
 
-model.save("../models/vgg/model.h5")
+model.save("../models/resnet/model.h5")
