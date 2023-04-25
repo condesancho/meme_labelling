@@ -15,7 +15,7 @@ import argparse
 import numpy as np
 import os
 from TextFuseNet.detectron2.config import get_cfg
-from text_detection.predictor import VisualizationDemo
+from predictor import VisualizationDemo
 import cv2
 from PIL import Image
 import time
@@ -95,33 +95,40 @@ def has_text(img_path):
         classes = prediction["instances"].pred_classes
         # If text is detected in the image
         if len(classes) == 0:
-            del classes
-            del prediction
             return False
         else:
-            del classes
-            del prediction
             return True
 
 
-args = get_parser().parse_args()
-cfg = setup_cfg(args)
-detection_demo = VisualizationDemo(cfg)
-imgdir = "./data/images/"
-files = [
-    os.path.join(imgdir, x) for x in os.listdir(imgdir) if (".jpg" in x or ".png" in x)
-]
-n = len(files)
-start = time.time()
-counter = 0
-df = pd.DataFrame(columns=["image", "text"])
+if __name__ == "__main__":
+    args = get_parser().parse_args()
+    cfg = setup_cfg(args)
+    detection_demo = VisualizationDemo(cfg)
+    imgdir = "../data/images/"
+    files = [
+        os.path.join(imgdir, x)
+        for x in os.listdir(imgdir)
+        if (".jpg" in x or ".png" in x)
+    ]
+    n = len(files)
+    start = time.time()
+    counter = 0
+    df = pd.DataFrame(columns=["image", "text"])
 
-for i, file in enumerate(files):
-    df.loc[len(df.index)] = [file, has_text(file)]
-    elapsed = time.time() - start
-    print(
-        f"\r{i + 1}/{n}: {file} {elapsed / 3600: 1.3f} h, ETA: {elapsed / (i + 1) * (n - i - 1) / 3600: 1.3f} h",
-        end="",
-    )
+    unchecked_files = []
+    for i, file in enumerate(files):
+        try:
+            df.loc[len(df.index)] = [file, has_text(file)]
+        except:
+            unchecked_files.append(file)
+        elapsed = time.time() - start
+        print(
+            f"\r{i + 1}/{n}: {file} {elapsed / 3600: 1.3f} h, ETA: {elapsed / (i + 1) * (n - i - 1) / 3600: 1.3f} h",
+            end="",
+        )
 
-df.to_csv("./text_detection/text_presence.csv", index=True)
+    df.to_csv("./textfusenet_txt_presence.csv", index=True)
+    unchecked = open("unchecked_files.txt", "w")
+    for item in unchecked_files:
+        unchecked.write(item + "\n")
+    unchecked.close()
