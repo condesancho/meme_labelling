@@ -19,7 +19,7 @@ BATCH_SIZE = 64
 
 
 def mlp(x, hidden_units, dropout_rate):
-    x = layers.Flatten(name="flatten")(x)
+    x = layers.GlobalAveragePooling2D(name="avg_pool")(x)
     for units in hidden_units:
         x = layers.Dense(units, activation=tf.nn.relu)(x)
         x = layers.Dropout(dropout_rate)(x)
@@ -44,7 +44,7 @@ def model_builder(hp):
             layer.trainable = False
 
     # Construct the top model and the output
-    top_model = mlp(resnet.output, [4096, 1024], hp_drop)
+    top_model = mlp(resnet.output, [1024, 512], hp_drop)
     output_layer = layers.Dense(4, activation="softmax")(top_model)
 
     # Final model
@@ -104,11 +104,13 @@ for layer in resnet.layers[-fine_tune:]:
         layer.trainable = False
 
 # Construct the top model and the output
-top_model = mlp(resnet.output, [4096, 1024], best_hps.get("dropout_rate"))
+top_model = mlp(resnet.output, [1024, 512], best_hps.get("dropout_rate"))
 output_layer = layers.Dense(4, activation="softmax")(top_model)
 
 # Final model
 model = Model(inputs=resnet.input, outputs=output_layer)
+
+print(model.summary())
 
 # Load the images
 train, valid = load_images(
@@ -146,6 +148,8 @@ resnet_history = model.fit(
     verbose=1,
 )
 
-resnet.save("../models/resnet_feat_ex/resnet_fine_tuned.h5")
+resnet_output = layers.GlobalAveragePooling2D(name="avg_pool")(resnet.output)
+resnet_with_avg_pool = Model(inputs=resnet.input, outputs=resnet_output)
+resnet_with_avg_pool.save("../models/resnet_feat_ex/resnet_fine_tuned.h5")
 
 model.save("../models/resnet/model.h5")
