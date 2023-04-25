@@ -1,4 +1,5 @@
 from tensorflow.keras.models import load_model
+from tensorflow.keras import layers, models
 
 import os
 from os.path import join
@@ -24,12 +25,17 @@ labelled_data, _ = load_images(
 )
 
 # Import the fine tuned model
-ft_model = load_model(MODEL_PATH + "vgg_fine_tuned.h5")
+model = load_model(MODEL_PATH + "vgg_fine_tuned.h5")
+output_layer = layers.GlobalAveragePooling2D()(model.output)
+
+ft_model = models.Model(inputs=model.input, outputs=output_layer)
+
+# The output shape of the cnn model
+output_shape = ft_model.output_shape[1:]
 
 ### Feature extraction for the labelled images ###
 sample_count = labelled_data.samples
-
-labelled_features = np.zeros(shape=(sample_count, 7, 7, 512))
+labelled_features = np.zeros(shape=(sample_count,) + output_shape)
 labels = np.zeros(shape=(sample_count, 4))
 
 i = 0
