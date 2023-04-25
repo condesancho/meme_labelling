@@ -11,3 +11,7 @@
 /text_detection/east*
 /text_detection/no_text
 /text_detection/text_presence.csv
+/text_detection/textfusenet*
+
+
+*.txt
