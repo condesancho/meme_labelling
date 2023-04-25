@@ -1,4 +1,5 @@
 from tensorflow.keras.models import load_model
+from tensorflow.keras import layers, models
 
 import os
 from os.path import join
@@ -21,6 +22,8 @@ labelled_data, _ = load_images(
 
 # Import the fine tuned model
 ft_model = load_model(MODEL_PATH + "cnn_fine_tuned.h5")
+ft_model.add(layers.GlobalAveragePooling2D())
+
 # The output shape of the cnn model
 output_shape = ft_model.output_shape[1:]
 
