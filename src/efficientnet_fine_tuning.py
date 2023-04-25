@@ -152,6 +152,14 @@ efficientnet_history = model.fit(
     verbose=1,
 )
 
-efficientnet.save("../models/efficientnet_feat_ex/efficientnet_fine_tuned.h5")
+efficientnet_output = layers.GlobalAveragePooling2D(name="avg_pool")(
+    efficientnet.output
+)
+efficientnet_with_avg_pool = Model(
+    inputs=efficientnet.input, outputs=efficientnet_output
+)
+efficientnet_with_avg_pool.save(
+    "../models/efficientnet_feat_ex/efficientnet_fine_tuned.h5"
+)
 
 model.save("../models/efficientnet/model.h5")
