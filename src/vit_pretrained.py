@@ -19,7 +19,7 @@ from vit_torch_classes import CustomVitModel, EarlyStopping
 import time
 import copy
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 MODEL_NAME = "google/vit-base-patch16-224-in21k"
 DATA_DIR = "../data/torch"
@@ -177,20 +177,64 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=20):
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    return model
+    return model, best_acc
 
 
-model = CustomVitModel()
-model.to(device)
+# Define hyperparameters
+hp_lr = [1e-2, 1e-3, 1e-4]
+hp_dropout = [0.5, 0.6, 0.75]
+hp_weight_decay = [1e-2, 1e-3, 1e-4]
 
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+best_lr = 0.0
+best_dropout = 0.0
+best_weight_decay = 0.0
+best_acc = 0.0
+for lr in hp_lr:
+    for dropout in hp_dropout:
+        for weight_decay in hp_weight_decay:
+            print(
+                f"Running test for {lr} learning rate, {dropout} dropout and {weight_decay} weight_decay"
+            )
+            model = CustomVitModel(dropout=dropout)
+            model.to(device)
 
-# Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+            criterion = nn.CrossEntropyLoss()
+            optimizer = optim.AdamW(
+                model.parameters(), lr=lr, weight_decay=weight_decay
+            )
 
-model = train_model(model, criterion, optimizer, exp_lr_scheduler)
+            # Decay LR by a factor of 0.1 every 7 epochs
+            exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
-PATH = "../models/vit_pretrained/model.pth"
+            _, model_acc = train_model(model, criterion, optimizer, exp_lr_scheduler)
 
-torch.save(model.state_dict(), PATH)
+            if model_acc > best_acc:
+                best_acc = model_acc
+                best_lr = lr
+                best_dropout = dropout
+                best_weight_decay = weight_decay
+
+            del model
+            torch.cuda.empty_cache()
+
+print("The best hyperparameters are:")
+print(f"Learning rate: {best_lr}")
+print(f"Dropout probability: {best_dropout}")
+print(f"Weight decay: {best_weight_decay}")
+
+
+""" Train the model for the best hyperparameters """
+# model = CustomVitModel()
+# model.to(device)
+
+# criterion = nn.CrossEntropyLoss()
+# optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+
+# # Decay LR by a factor of 0.1 every 7 epochs
+# exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+
+# model = train_model(model, criterion, optimizer, exp_lr_scheduler)
+
+# PATH = "../models/vit_pretrained/model.pth"
+
+# torch.save(model.state_dict(), PATH)

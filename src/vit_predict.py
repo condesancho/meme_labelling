@@ -7,7 +7,7 @@ from torchvision.transforms import (
     ToTensor,
 )
 
-from datasets import load_dataset, Split
+from datasets import load_dataset
 from transformers import ViTImageProcessor
 
 from vit_torch_classes import CustomVitModel, TestDataSet
@@ -19,7 +19,6 @@ MODEL_DIR = "../models/vit_pretrained/"
 PATH = "../models/vit_pretrained/model.pth"
 DATA_DIR = "../data/images"
 MODEL_NAME = "google/vit-base-patch16-224-in21k"
-BATCH_SIZE = 64
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
