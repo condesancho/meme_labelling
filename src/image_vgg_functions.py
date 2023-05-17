@@ -16,17 +16,18 @@ def load_images(path, batch_size, generate_data=False, valid=True, architecture=
     # The names of the classes according to the names of the directories
     classes = sorted(os.listdir(path))[1:]
 
+    preprocess = None
     rescaling = None
     sample_mean = False
     sample_std = False
 
     # Check if preprocessing is for a simple CNN or for a specific architecture
-    if architecture == "vgg":
-        preprocess = vgg16.preprocess_input
-        img_size = 224
-    elif architecture == "toy_cnn":
-        preprocess = None
+
+    if architecture == "toy_cnn":
         rescaling = 1.0 / 255
+        img_size = 224
+    elif architecture == "vgg":
+        preprocess = vgg16.preprocess_input
         img_size = 224
     elif architecture == "resnet":
         preprocess = resnet_v2.preprocess_input
@@ -35,11 +36,15 @@ def load_images(path, batch_size, generate_data=False, valid=True, architecture=
         preprocess = efficientnet.preprocess_input
         img_size = 380
     elif architecture == "vit":
-        preprocess = None
         rescaling = 1.0 / 255
         sample_mean = True
         sample_std = True
         img_size = 250
+    elif architecture == "pretrained_vit":
+        rescaling = 1.0 / 255
+        sample_mean = True
+        sample_std = True
+        img_size = 224
     else:
         os.exit("Unknown architecture input in load_images")
 

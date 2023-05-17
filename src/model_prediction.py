@@ -12,11 +12,21 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 UNLABELLED_PATH = "../data/images/"
 
-selection = int(input("Select 1 for cnn or 2 for vgg: "))
+selection = int(
+    input("Select 1 for CNN, 2 for VGG, 3 for ResNet or 4 for EfficientNet: ")
+)
 if selection == 1:
     model_dir = "../models/cnn/"
+    arch = "toy_cnn"
 elif selection == 2:
     model_dir = "../models/vgg/"
+    arch = "vgg"
+elif selection == 3:
+    model_dir = "../models/resnet/"
+    arch = "resnet"
+elif selection == 4:
+    model_dir = "../models/efficientnet/"
+    arch = "efficientnet"
 else:
     sys.exit("Invalid input. Try again")
 
@@ -31,10 +41,7 @@ predictions = []
 unlabelled_imgs = []
 for idx, image_path in enumerate(candidate_images):
     file_path = join(UNLABELLED_PATH, image_path)
-    if selection == 1:
-        img = get_image(file_path, input_shape, architecture='toy_cnn')
-    elif selection == 2:
-        img = get_image(file_path, input_shape, architecture='vgg')
+    img = get_image(file_path, input_shape, architecture=arch)
     if img is not None:
         if idx % 100 == 0:
             print(

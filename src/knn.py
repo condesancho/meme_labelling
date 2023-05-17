@@ -3,11 +3,21 @@ from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
 import sys
 
-selection = int(input("Select 1 for cnn or 2 for vgg: "))
+selection = int(
+    input(
+        "Select 1 for CNN, 2 for VGG, 3 for ResNet, 4 for EfficientNet or 5 for ViT: "
+    )
+)
 if selection == 1:
     feature_dir = "../models/cnn_feat_ex/"
 elif selection == 2:
     feature_dir = "../models/vgg_feat_ex/"
+elif selection == 3:
+    feature_dir = "../models/resnet_feat_ex/"
+elif selection == 4:
+    feature_dir = "../models/efficientnet_feat_ex/"
+elif selection == 5:
+    feature_dir = "../models/vit_feat_ex/"
 else:
     sys.exit("Invalid input. Try again")
 
