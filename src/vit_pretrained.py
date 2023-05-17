@@ -180,61 +180,70 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=20):
     return model, best_acc
 
 
-# Define hyperparameters
-hp_lr = [1e-2, 1e-3, 1e-4]
-hp_dropout = [0.5, 0.6, 0.75]
-hp_weight_decay = [1e-2, 1e-3, 1e-4]
+""" Code used for hyperparametre tuning """
+# # Define hyperparameters
+# hp_lr = [1e-2, 1e-3, 1e-4]
+# hp_dropout = [0.5, 0.6, 0.75]
+# hp_weight_decay = [1e-2, 1e-3, 1e-4]
 
-best_lr = 0.0
-best_dropout = 0.0
-best_weight_decay = 0.0
-best_acc = 0.0
-for lr in hp_lr:
-    for dropout in hp_dropout:
-        for weight_decay in hp_weight_decay:
-            print(
-                f"Running test for {lr} learning rate, {dropout} dropout and {weight_decay} weight_decay"
-            )
-            model = CustomVitModel(dropout=dropout)
-            model.to(device)
+# best_lr = 0.0
+# best_dropout = 0.0
+# best_weight_decay = 0.0
+# best_acc = 0.0
+# for lr in hp_lr:
+#     for dropout in hp_dropout:
+#         for weight_decay in hp_weight_decay:
+#             print(
+#                 f"Running test for {lr} learning rate, {dropout} dropout and {weight_decay} weight_decay"
+#             )
+#             model = CustomVitModel(dropout=dropout)
+#             model.to(device)
 
-            criterion = nn.CrossEntropyLoss()
-            optimizer = optim.AdamW(
-                model.parameters(), lr=lr, weight_decay=weight_decay
-            )
+#             criterion = nn.CrossEntropyLoss()
+#             optimizer = optim.AdamW(
+#                 model.parameters(), lr=lr, weight_decay=weight_decay
+#             )
 
-            # Decay LR by a factor of 0.1 every 7 epochs
-            exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+#             # Decay LR by a factor of 0.1 every 7 epochs
+#             exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
-            _, model_acc = train_model(model, criterion, optimizer, exp_lr_scheduler)
+#             model, model_acc = train_model(
+#                 model, criterion, optimizer, exp_lr_scheduler
+#             )
 
-            if model_acc > best_acc:
-                best_acc = model_acc
-                best_lr = lr
-                best_dropout = dropout
-                best_weight_decay = weight_decay
+#             if model_acc > best_acc:
+#                 best_acc = model_acc
+#                 best_lr = lr
+#                 best_dropout = dropout
+#                 best_weight_decay = weight_decay
 
-            del model
-            torch.cuda.empty_cache()
+#             del model
+#             del optimizer
+#             torch.cuda.empty_cache()
+#             print()
 
-print("The best hyperparameters are:")
-print(f"Learning rate: {best_lr}")
-print(f"Dropout probability: {best_dropout}")
-print(f"Weight decay: {best_weight_decay}")
+# print("The best hyperparameters are:")
+# print(f"Learning rate: {best_lr}")
+# print(f"Dropout probability: {best_dropout}")
+# print(f"Weight decay: {best_weight_decay}")
 
 
 """ Train the model for the best hyperparameters """
-# model = CustomVitModel()
-# model.to(device)
+# The best hyperparametres obtained from the previous grid search are:
+# Learning rate: 1e-4
+# Dropout: 0.75
+# Weight decay: 0.01
+model = CustomVitModel(dropout=0.75)
+model.to(device)
 
-# criterion = nn.CrossEntropyLoss()
-# optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-2)
 
-# # Decay LR by a factor of 0.1 every 7 epochs
-# exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+# Decay LR by a factor of 0.1 every 7 epochs
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
-# model = train_model(model, criterion, optimizer, exp_lr_scheduler)
+model, _ = train_model(model, criterion, optimizer, exp_lr_scheduler)
 
-# PATH = "../models/vit_pretrained/model.pth"
+PATH = "../models/vit_pretrained/model.pth"
 
-# torch.save(model.state_dict(), PATH)
+torch.save(model.state_dict(), PATH)

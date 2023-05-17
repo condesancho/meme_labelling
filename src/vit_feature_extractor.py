@@ -108,7 +108,6 @@ for idx, image in enumerate(train_dataloader):
             output = features["base_model"]
             activations.append(output.view(-1).cpu().numpy())
             labels.append(image["labels"].numpy())
-    break
 
 labelled_features = np.array(activations)
 
