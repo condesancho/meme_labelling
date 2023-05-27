@@ -1,150 +1,247 @@
 import torch
 from torch.utils.data import DataLoader
-import torchvision.transforms as transforms
-from sklearn.metrics import roc_auc_score, accuracy_score
+import torch.nn as nn
+from torch import optim
+from torch.optim import lr_scheduler
 
-from models import CustomCNN, CustomResNet
-from data import ImageDataset
+from sklearn.metrics import accuracy_score
 
 import time
-import random
-import numpy as np
+import copy
+
 import pickle
-import json
 
-torch.manual_seed(42)
-random.seed(42)
-np.random.seed(42)
+from utils import EarlyStopping, vit_experiments, resnet_experiments
 
-if torch.cuda.is_available():
-    device = torch.device("cuda:0")
-else:
-    raise Exception("No GPUs available!")
+from models import CustomResNet
 
-data_dir = "../data"
-imnet_mean = [0.485, 0.456, 0.406]
-imnet_std = [0.229, 0.224, 0.225]
-IMG_SIZE = 224
-batch_size = 128
-epochs = 10
 
-results = []
-train_ds = ImageDataset(
-    directory=data_dir,
-    split="train",
-    reg_img_split="coco",
-    transform=transforms.Compose(
-        [
-            transforms.Resize((IMG_SIZE, IMG_SIZE)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(imnet_mean, imnet_std),
-        ]
-    ),
-)
-train_dl = DataLoader(
-    train_ds,
-    batch_size=batch_size,
-    shuffle=True,
-    num_workers=2,
-    pin_memory=True,
-    drop_last=False,
-)
-val_ds = ImageDataset(
-    directory=data_dir,
-    split="val",
-    reg_img_split="coco",
-    transform=transforms.Compose(
-        [
-            transforms.Resize((IMG_SIZE, IMG_SIZE)),
-            transforms.ToTensor(),
-            transforms.Normalize(imnet_mean, imnet_std),
-        ]
-    ),
-)
-val_dl = DataLoader(
-    val_ds,
-    batch_size=batch_size,
-    shuffle=False,
-    num_workers=2,
-    pin_memory=True,
-    drop_last=False,
-)
+""" Define the training function """
 
-learning_rate = 1e-4
-dropout = 0.5
-depth = 5
 
-ckpt = f"ckpt/cnn.pt"
-max_auc = 0
+def train_model(
+    model,
+    image_datasets,
+    batch_size,
+    criterion,
+    optimizer,
+    scheduler,
+    device,
+    num_epochs=20,
+):
+    dataloaders = {
+        x: DataLoader(
+            image_datasets[x],
+            batch_size=batch_size,
+            collate_fn=collate_fn,
+            num_workers=2,
+            pin_memory=True,
+            drop_last=False,
+        )
+        for x in ["train", "val"]
+    }
+    dataset_sizes = {x: len(image_datasets[x]) for x in ["train", "val"]}
 
-model = CustomCNN(depth, dropout)
+    since = time.time()
 
-criterion = torch.nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    best_model_wts = copy.deepcopy(model.state_dict())
+    valid_acc = 0.0
 
-start = time.time()
-val_loss = []
-val_acc = []
-val_auc = []
-for epoch in range(epochs):
-    print(f"Epoch {epoch}/{epochs - 1}")
-    print("-" * 10)
-    model.train()
-    for data, labels in train_dl:
-        labels.to(device)
-        optimizer.zero_grad()
-        outputs = model(data)
-        loss_ = criterion(outputs, labels.float().view(-1, 1))
-        loss_.backward()
-        optimizer.step()
+    val_acc_history = []
 
-    model.eval()
-    val_loss_ = 0
-    y_score = []
-    y_true = []
-    y_pred = []
-    with torch.no_grad():
-        for data, labels in val_dl:
-            labels.to(device)
-            outputs = model(data)
-            val_loss_ += criterion(outputs, labels.float().view(-1, 1)).item()
-            score = outputs.data
-            y_score.extend(score.cpu().numpy().tolist())
-            y_true.extend(labels.cpu().numpy().tolist())
-            y_pred.extend((score > 0.5).cpu().numpy().tolist())
+    # early stopping
+    early_stopping = EarlyStopping()
 
-    val_loss_ /= len(val_dl)
-    val_acc_ = accuracy_score(y_true, y_pred)
-    val_auc_ = roc_auc_score(y_true, y_score)
+    for epoch in range(num_epochs):
+        print(f"Epoch {epoch+1}/{num_epochs}")
+        print("-" * 10)
 
-    print(f"Validation Loss: {val_loss_:.4f} Acc: {val_acc_:.4f}")
+        # Each epoch has a training and validation phase
+        for phase in ["train", "val"]:
+            if phase == "train":
+                model.train()  # Set model to training mode
+            else:
+                model.eval()  # Set model to evaluate mode
 
-    # if val_auc_ > max_auc:
-    #     max_auc = val_auc_
-    #     torch.save(model, ckpt)
-    #     with open(f"{ckpt[:-3]}.txt", "w") as file:
-    #         file.write(
-    #             json.dumps(
-    #                 {
-    #                     "modality": modality,
-    #                     "lr": learning_rate,
-    #                     "pretrained": pretrained_,
-    #                     "hidden_dim": hidden_dim,
-    #                     "lstm_layers": lstm_layers_,
-    #                     "val_loss": val_loss_,
-    #                     "val_acc": val_acc_,
-    #                     "val_auc": val_auc_,
-    #                     "epoch": epoch,
-    #                 }
-    #             )
-    #         )
+            running_loss = 0.0
+            running_corrects = 0
+            y_true = []
+            y_pred = []
 
-    val_loss.append(val_loss_)
-    val_acc.append(val_acc_)
-    val_auc.append(val_auc_)
+            # Iterate over data.
+            for item in dataloaders[phase]:
+                inputs = item["pixel_values"].to(device)
+                labels = item["labels"].to(device)
 
-    if epoch == int(epochs / 2) - 1:
-        for g in optimizer.param_groups:
-            g["lr"] = learning_rate / 10
+                # zero the parameter gradients
+                optimizer.zero_grad()
+
+                # forward
+                # track history if only in train
+                with torch.set_grad_enabled(phase == "train"):
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels.float().view(-1, 1))
+                    score = outputs.data
+                    y_true.extend(labels.cpu().numpy().tolist())
+                    y_pred.extend((score > 0.5).cpu().numpy().tolist())
+
+                    # backward + optimize only if in training phase
+                    if phase == "train":
+                        loss.backward()
+                        optimizer.step()
+
+                # statistics
+                running_loss += loss.item() * inputs.size(0)
+
+            if phase == "train":
+                scheduler.step()
+
+            epoch_loss = running_loss / dataset_sizes[phase]
+            epoch_acc = accuracy_score(y_true, y_pred)
+
+            print(f"{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}")
+
+            if phase == "val":
+                valid_acc = epoch_acc
+                val_acc_history.append(epoch_acc)
+
+            # deep copy the model
+            if phase == "val" and epoch_acc > max(val_acc_history):
+                best_model_wts = copy.deepcopy(model.state_dict())
+
+        early_stopping(valid_acc)
+        last_epoch = epoch + 1
+        if early_stopping.early_stop:
+            print(f"Early stopping... We are at epoch:{last_epoch}")
+            break
+
+        print()
+
+    time_elapsed = time.time() - since
+    print(f"Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s")
+    print(f"Best val Acc: {max(val_acc_history):4f}")
+
+    # load best model weights
+    model.load_state_dict(best_model_wts)
+    return model, val_acc_history, last_epoch
+
+
+def collate_fn(examples):
+    pixel_values = torch.stack([example["pixel_values"] for example in examples])
+    labels = torch.tensor([example["label"] for example in examples])
+    return {"pixel_values": pixel_values, "labels": labels}
+
+
+""" Define the function for the hyperparmeter tuning """
+
+
+def hyperparam_tuning(model_name, image_datasets, batch_size, device, save_filepath):
+    results = []
+    epochs = 10
+
+    if model_name == "resnet":
+        experiments = resnet_experiments()
+        for lr, dropout, trainable_layers in experiments:
+            print("Running experiment for:")
+            print(
+                f"{lr} learning rate, {dropout} dropout and {trainable_layers} trainable layers"
+            )
+            model = CustomResNet(trainable_layers, dropout)
+
+            model.to(device)
+
+            criterion = nn.BCELoss()
+            optimizer = optim.Adam(model.parameters(), lr=lr)
+
+            # Decay LR by a factor of 0.1 every 5 epochs
+            exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+
+            model, val_acc_history, last_epoch = train_model(
+                model,
+                image_datasets,
+                batch_size,
+                criterion,
+                optimizer,
+                exp_lr_scheduler,
+                device,
+                epochs,
+            )
+
+            # Deallocate memory
+            del model
+            del optimizer
+            torch.cuda.empty_cache()
+
+            config = {
+                "batch_size": batch_size,
+                "lr": lr,
+                "dropout": dropout,
+                "trainable_layers": trainable_layers,
+                "epochs": epochs,
+                "epochs_used_for_training": last_epoch,
+            }
+
+            max_acc = max(val_acc_history)
+            print(
+                f"For {lr} learning rate, {dropout} dropout and {trainable_layers} trainable layers"
+            )
+            print(f"the max val accuracy was: {max_acc}\n")
+
+            results.append({"config": config, "accuracy": max_acc})
+            with open(save_filepath, "wb") as h:
+                pickle.dump(results, h, protocol=pickle.HIGHEST_PROTOCOL)
+    elif model_name == "vit":
+        experiments = vit_experiments()
+        for lr, dropout, weight_decay in experiments:
+            print("Running experiment for:")
+            print(
+                f"{lr} learning rate, {dropout} dropout and {weight_decay} weight decay"
+            )
+            model = CustomVitModel(dropout)
+            model.to(device)
+
+            criterion = nn.BCELoss()
+            optimizer = optim.AdamW(
+                model.parameters(), lr=lr, weight_decay=weight_decay
+            )
+
+            # Decay LR by a factor of 0.1 every 5 epochs
+            exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+
+            model, val_acc_history, last_epoch = train_model(
+                model,
+                image_datasets,
+                batch_size,
+                criterion,
+                optimizer,
+                exp_lr_scheduler,
+                device,
+                epochs,
+            )
+            del model
+            del optimizer
+            torch.cuda.empty_cache()
+
+            config = {
+                "batch_size": batch_size,
+                "lr": lr,
+                "dropout": dropout,
+                "weight_decay": weight_decay,
+                "epochs": epochs,
+                "epochs_used_for_training": last_epoch,
+            }
+
+            max_acc = max(val_acc_history)
+            print(
+                f"For {lr} learning rate, {dropout} dropout and {trainable_layers} trainable layers"
+            )
+            print(f"the max val accuracy was: {max_acc}\n")
+
+            results.append({"config": config, "accuracy": max_acc})
+            with open(save_filepath, "wb") as h:
+                pickle.dump(results, h, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+        error = ValueError(
+            "hyperparam_tuning: model_name does not match an appropriate model name"
+        )
+        raise error

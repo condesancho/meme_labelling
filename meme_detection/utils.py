@@ -2,8 +2,27 @@ import os
 import shutil
 import numpy as np
 import pandas as pd
-import random
 import sys
+
+
+def resnet_experiments():
+    x = []
+    for lr in [1e-3, 1e-4]:
+        for dropout in [0.6, 0.75]:
+            for trainable_layers in [5, 6]:
+                x.append([lr, dropout, trainable_layers])
+
+    return x
+
+
+def vit_experiments():
+    x = []
+    for lr in [1e-3, 1e-4]:
+        for dropout in [0.6, 0.75]:
+            for weight_decay in [1e-3, 1e-4]:
+                x.append([lr, dropout, weight_decay])
+
+    return x
 
 
 def split_dataset(data_dir, reg_img_split: str):
@@ -198,3 +217,23 @@ def make_dataset_dirs(
     shutil.copytree(
         concep_capt_dir, os.path.join(regular_img_dir, "conceptual_captions")
     )
+
+
+""" Early Stopping class """
+
+
+class EarlyStopping:
+    def __init__(self, patience=5):
+        self.patience = patience
+        self.counter = 0
+        self.early_stop = False
+        self.max_val_acc = 0.0
+
+    def __call__(self, current_val_acc):
+        if (current_val_acc - self.max_val_acc) < 0:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.max_val_acc = current_val_acc
+            self.counter = 0

@@ -8,7 +8,7 @@ from PIL import Image
 
 
 class ImageDataset(Dataset):
-    def __init__(self, directory, split, reg_img_split, transform=None):
+    def __init__(self, directory, split, reg_img_split, transform):
         self.train, self.val, self.test = split_dataset(directory, reg_img_split)
         self.transform = transform
         self.images = (
@@ -27,11 +27,12 @@ class ImageDataset(Dataset):
             idx = idx.tolist()
 
         image_path = self.images["file_path"][idx]
-        image = image = Image.open(image_path).convert("RGB")
+        image = Image.open(image_path).convert("RGB")
 
-        if self.transform:
-            image = self.transform(image)
+        sample = {
+            "image": image,
+            "pixel_values": self.transform(image),
+            "label": self.images["label"][idx],
+        }
 
-        label = self.images["label"][idx]
-
-        return image, label
+        return sample
