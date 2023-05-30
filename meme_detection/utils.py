@@ -223,17 +223,34 @@ def make_dataset_dirs(
 
 
 class EarlyStopping:
-    def __init__(self, patience=5):
+    def __init__(self, patience=5, monitor="accuracy"):
         self.patience = patience
         self.counter = 0
         self.early_stop = False
         self.max_val_acc = 0.0
+        self.min_loss = float("inf")
+        self.monitor = monitor
 
-    def __call__(self, current_val_acc):
-        if (current_val_acc - self.max_val_acc) < 0:
-            self.counter += 1
-            if self.counter >= self.patience:
-                self.early_stop = True
+    def __call__(self, current_val_value):
+        if self.monitor == "accuracy":
+            if (current_val_value - self.max_val_acc) < 0:
+                self.counter += 1
+                if self.counter >= self.patience:
+                    self.early_stop = True
+            else:
+                self.max_val_acc = current_val_value
+                self.counter = 0
+        elif self.monitor == "loss":
+            if (current_val_value - self.min_loss) < 0:
+                self.counter += 1
+                if self.counter >= self.patience:
+                    self.early_stop = True
+            else:
+                self.min_loss = current_val_value
+                self.counter = 0
         else:
-            self.max_val_acc = current_val_acc
-            self.counter = 0
+            acceptable_monitor = ["accuracy", "loss"]
+            error = ValueError(
+                f"EarlyStopping: monitor param must be one of {acceptable_monitor}"
+            )
+            raise error

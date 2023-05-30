@@ -87,7 +87,7 @@ else:
     vit_name = "google/vit-base-patch16-224-in21k"
     processor = ViTImageProcessor.from_pretrained(vit_name)
     IMG_SIZE = processor.size["height"]
-batch_size = 128
+batch_size = 64
 
 # Create train and validation datasets
 train_ds = ImageDataset(

@@ -13,7 +13,7 @@ import pickle
 
 from utils import EarlyStopping, vit_experiments, resnet_experiments
 
-from models import CustomResNet
+from models import CustomResNet, CustomVitModel
 
 
 """ Define the training function """
@@ -48,9 +48,10 @@ def train_model(
     valid_acc = 0.0
 
     val_acc_history = []
+    val_loss_history = []
 
     # early stopping
-    early_stopping = EarlyStopping()
+    early_stopping = EarlyStopping(monitor="accuracy")
 
     for epoch in range(num_epochs):
         print(f"Epoch {epoch+1}/{num_epochs}")
@@ -64,7 +65,6 @@ def train_model(
                 model.eval()  # Set model to evaluate mode
 
             running_loss = 0.0
-            running_corrects = 0
             y_true = []
             y_pred = []
 
@@ -102,11 +102,13 @@ def train_model(
             print(f"{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}")
 
             if phase == "val":
+                valid_loss = epoch_loss
                 valid_acc = epoch_acc
                 val_acc_history.append(epoch_acc)
+                val_loss_history.append(epoch_loss)
 
             # deep copy the model
-            if phase == "val" and epoch_acc > max(val_acc_history):
+            if phase == "val" and (epoch_loss < min(val_loss_history) or epoch == 0):
                 best_model_wts = copy.deepcopy(model.state_dict())
 
         early_stopping(valid_acc)
@@ -233,7 +235,7 @@ def hyperparam_tuning(model_name, image_datasets, batch_size, device, save_filep
 
             max_acc = max(val_acc_history)
             print(
-                f"For {lr} learning rate, {dropout} dropout and {trainable_layers} trainable layers"
+                f"For {lr} learning rate, {dropout} dropout and {weight_decay} weight decay"
             )
             print(f"the max val accuracy was: {max_acc}\n")
 

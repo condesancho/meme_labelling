@@ -1,12 +1,15 @@
 # Exclude following directories
 *__pycache__/
-/ml4a-ofx
-/TextFuseNet
+*.vscode/
+
+*ml4a-ofx/
+*TextFuseNet/
 /data
 /tsne
 /models
 
-/src/samples
+# Directories that contain image samples
+*/samples
 
 /text_detection/east*
 /text_detection/no_text
@@ -15,3 +18,4 @@
 
 
 *.txt
+test*
